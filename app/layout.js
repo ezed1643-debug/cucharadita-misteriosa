@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="es">
+    <html lang="es" className="light">
       {/* Aquí aplicamos la estética "Beauty": 
         - bg-[#FCF9F6]: Fondo color crema/perla muy suave.
         - text-[#4A4A4A]: Texto gris oscuro (más elegante y menos agresivo que el negro puro).
