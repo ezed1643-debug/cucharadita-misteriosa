@@ -25,10 +25,12 @@ export async function POST(request) {
           mode: 'not_specified'
         },
         back_urls: {
-          success: "http://localhost:3000/success", // <-- Agregamos /success aquí
-          failure: "http://localhost:3000",
-          pending: "http://localhost:3000"
-        }
+          success: "https://cucharadita-misteriosa.vercel.app/success", 
+          failure: "https://cucharadita-misteriosa.vercel.app",
+          pending: "https://cucharadita-misteriosa.vercel.app"
+        },
+        auto_return: "approved",
+      }
         // Eliminamos la línea de auto_return que bloqueaba el entorno local
       }
     });
