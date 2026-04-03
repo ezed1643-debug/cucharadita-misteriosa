@@ -11,6 +11,7 @@ export default function AdminPanel() {
   const [precio, setPrecio] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [stock, setStock] = useState("");
+  const [categoria, setCategoria] = useState(""); // NUEVO: Estado para la categoría
   const [imagen, setImagen] = useState(null); 
   const [imagenUrlActual, setImagenUrlActual] = useState(""); 
   
@@ -18,6 +19,9 @@ export default function AdminPanel() {
   const [cargando, setCargando] = useState(false);
   const [productos, setProductos] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
+
+  // Extraemos las categorías únicas que ya existen en tus productos
+  const categoriasExistentes = Array.from(new Set(productos.map(p => p.categoria).filter(c => c)));
 
   // Cargar productos al abrir el panel
   const cargarProductos = async () => {
@@ -43,9 +47,8 @@ export default function AdminPanel() {
     setCargando(true);
 
     try {
-      let imagenFinalUrl = imagenUrlActual; // Por defecto, conserva la imagen anterior si la hay
+      let imagenFinalUrl = imagenUrlActual;
 
-      // Si el usuario seleccionó una foto NUEVA, la subimos
       if (imagen) {
         const nombreArchivo = `${Date.now()}_${imagen.name}`;
         const imageRef = ref(storage, `fotos_productos/${nombreArchivo}`);
@@ -56,22 +59,20 @@ export default function AdminPanel() {
       const datosProducto = {
         nombre,
         descripcion,
+        categoria, // NUEVO: Se guarda la categoría
         precio: Number(precio),
         stock: Number(stock),
         imagenUrl: imagenFinalUrl || "https://via.placeholder.com/250"
       };
 
       if (editandoId) {
-        // ACTUALIZAR producto existente
         await updateDoc(doc(db, "productos", editandoId), datosProducto);
         alert("¡Producto actualizado!");
       } else {
-        // CREAR producto nuevo
         await addDoc(collection(db, "productos"), datosProducto);
         alert("¡Producto creado con éxito!");
       }
       
-      // Limpiar formulario y recargar lista
       limpiarFormulario();
       cargarProductos();
       
@@ -90,9 +91,10 @@ export default function AdminPanel() {
     setPrecio(prod.precio.toString());
     setDescripcion(prod.descripcion || "");
     setStock(prod.stock ? prod.stock.toString() : "0");
+    setCategoria(prod.categoria || ""); // NUEVO: Carga la categoría al editar
     setImagenUrlActual(prod.imagenUrl || "");
-    setImagen(null); // Resetea el archivo seleccionado
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Sube la pantalla
+    setImagen(null); 
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
 
   // Función para cancelar la edición y limpiar
@@ -102,6 +104,7 @@ export default function AdminPanel() {
     setPrecio("");
     setDescripcion("");
     setStock("");
+    setCategoria(""); // NUEVO: Limpia la categoría
     setImagenUrlActual("");
     setImagen(null);
     const inputFoto = document.getElementById('selector-foto');
@@ -113,7 +116,7 @@ export default function AdminPanel() {
     if (window.confirm("¿Estás segura de que quieres borrar este producto?")) {
       try {
         await deleteDoc(doc(db, "productos", id));
-        cargarProductos(); // Recarga la lista
+        cargarProductos(); 
       } catch (error) {
         console.error("Error al eliminar:", error);
         alert("No se pudo eliminar.");
@@ -121,10 +124,10 @@ export default function AdminPanel() {
     }
   };
 
-  // Función rápida para cambiar stock con los botones + y -
+  // Función rápida para cambiar stock
   const modificarStockRapido = async (id, stockActual, cambio) => {
     const nuevoStock = stockActual + cambio;
-    if (nuevoStock < 0) return; // No permitir stock negativo
+    if (nuevoStock < 0) return; 
     
     try {
       await updateDoc(doc(db, "productos", id), { stock: nuevoStock });
@@ -165,6 +168,32 @@ export default function AdminPanel() {
               />
             </div>
 
+            {/* CAMPO DE CATEGORÍA CON SUGERENCIAS */}
+            <div className="flex flex-col gap-2">
+              <Input 
+                isRequired 
+                label="Categoría" 
+                placeholder="Escribe una nueva o elige abajo"
+                value={categoria} 
+                onValueChange={setCategoria}
+              />
+              {categoriasExistentes.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  <span className="text-xs text-[#6D6875] flex items-center">Ya creadas:</span>
+                  {categoriasExistentes.map(cat => (
+                    <button 
+                      key={cat} 
+                      type="button"
+                      onClick={() => setCategoria(cat)}
+                      className="text-xs bg-[#FCD5CE]/30 text-[#4A4A4A] px-3 py-1 rounded-full border border-[#FCD5CE] hover:bg-[#FCD5CE] transition-colors"
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <Textarea
               label="Descripción del producto"
               placeholder="Ej: Sérum hidratante con ácido hialurónico..."
@@ -179,7 +208,7 @@ export default function AdminPanel() {
 
             <div className="flex flex-col gap-1 p-3 border border-dashed border-[#FCD5CE] rounded-xl bg-white/50">
               <label className="text-sm text-[#6D6875] font-medium ml-1">
-                {editandoId ? "Cambiar foto (dejar vacío para mantener la actual)" : "Subir foto del producto"}
+                {editandoId ? "Cambiar foto (dejar vacío para mantener actual)" : "Subir foto del producto"}
               </label>
               <input 
                 id="selector-foto" type="file" accept="image/*"
@@ -213,11 +242,15 @@ export default function AdminPanel() {
               <CardBody className="flex flex-row gap-4 items-center p-4">
                 <img src={prod.imagenUrl} alt={prod.nombre} className="w-20 h-20 object-cover rounded-lg shadow-sm" />
                 
-                <div className="flex-1">
-                  <h3 className="font-bold text-[#4A4A4A] truncate">{prod.nombre}</h3>
-                  <p className="text-sm text-[#B5838D] font-medium">${prod.precio}</p>
+                <div className="flex-1 overflow-hidden">
+                  {/* Etiqueta visual de la categoría */}
+                  <span className="inline-block px-2 py-0.5 mb-1 text-[10px] font-bold tracking-wider text-white bg-[#B5838D] rounded-full uppercase">
+                    {prod.categoria || "Sin categoría"}
+                  </span>
                   
-                  {/* Control Rápido de Stock */}
+                  <h3 className="font-bold text-[#4A4A4A] truncate">{prod.nombre}</h3>
+                  <p className="text-sm text-[#E5989B] font-medium">${prod.precio}</p>
+                  
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-xs text-gray-500 uppercase tracking-wide">Stock:</span>
                     <Button size="sm" isIconOnly className="h-6 w-6 min-w-0 bg-gray-100" onClick={() => modificarStockRapido(prod.id, prod.stock || 0, -1)}>-</Button>
@@ -226,7 +259,6 @@ export default function AdminPanel() {
                   </div>
                 </div>
 
-                {/* Botones de acción (Editar / Borrar) */}
                 <div className="flex flex-col gap-2">
                   <Button size="sm" className="bg-[#FCD5CE] text-[#4A4A4A]" onClick={() => prepararEdicion(prod)}>
                     Editar
