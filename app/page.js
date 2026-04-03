@@ -74,11 +74,22 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center p-3 sm:p-6 md:p-12">
       
-      <div className="w-full max-w-7xl mb-8 text-center mt-4">
-        <h1 className={`${playfair.className} text-4xl sm:text-6xl font-bold mb-3 text-[#B5838D] italic`}>
-          Cucharadita Misteriosa
-        </h1>
-        <p className="text-sm sm:text-xl font-light text-[#6D6875]">Cosmética y artículos de belleza</p>
+      {/* CABECERA CON TIPOGRAFÍA ELEGANTE Y SUBTÍTULOS DIFERENCIADOS */}
+      <div className="w-full max-w-7xl mb-8 md:mb-12 text-center mt-4 px-4">
+      {/* Título Principal */}
+       <h1 className={`${playfair.className} text-5xl sm:text-6xl md:text-7xl font-bold mb-4 text-[#B5838D] italic tracking-tight`}>
+      Cucharadita Misteriosa
+      </h1>
+
+      {/* Frase de impacto: Mediana y Negrita */}
+      <p className="text-xl sm:text-2xl font-bold text-[#4A4A4A] mb-2 tracking-wide uppercase">
+        Descubre tu esencia
+      </p>
+
+      {/* Descripción: Ligera y clara */}
+      <p className="text-sm sm:text-base md:text-lg font-light max-w-2xl mx-auto text-[#6D6875] leading-relaxed">
+       Maquillaje, cuidado personal y artículos de belleza seleccionados para resaltar tu luz.
+      </p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl">
