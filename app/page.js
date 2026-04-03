@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
-// Aquí está la ruta exacta para llegar a lib estando afuera de app
 import { db } from "../lib/firebase"; 
 import { Card, CardBody, CardFooter, Image, Button } from "@nextui-org/react";
 
@@ -10,7 +9,7 @@ export default function Home() {
   const [carrito, setCarrito] = useState([]);
   const [cargandoPagos, setCargandoPagos] = useState(false);
 
-  // Traemos los cosméticos desde Firebase
+  // Traemos los cosméticos desde Firebase y los ordenamos
   useEffect(() => {
     const obtenerProductos = async () => {
       try {
@@ -19,6 +18,10 @@ export default function Home() {
         querySnapshot.forEach((doc) => {
           docs.push({ id: doc.id, ...doc.data() });
         });
+        
+        // ORDEN ALFABÉTICO (De la A a la Z por el nombre)
+        docs.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
+        
         setProductos(docs);
       } catch (error) {
         console.error("Error al cargar los productos:", error);
@@ -42,12 +45,11 @@ export default function Home() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Puedes cambiar el 0 por el costo de envío local si lo deseas
         body: JSON.stringify({ carrito, costoEnvio: 0 }), 
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url; // Redirige a Mercado Pago
+        window.location.href = data.url; 
       }
     } catch (error) {
       console.error("Error al procesar pago", error);
@@ -70,20 +72,29 @@ export default function Home() {
         </p>
       </div>
 
-      {/* CONTENEDOR PRINCIPAL: Catálogo + Carrito */}
+      {/* CONTENEDOR PRINCIPAL */}
       <div className="flex flex-col lg:flex-row gap-10 w-full max-w-7xl">
         
         {/* SECCIÓN DEL CATÁLOGO */}
         <div className="flex-1">
           <h2 className="text-2xl font-serif mb-6 text-[#4A4A4A] border-b pb-2">Nuestros Productos</h2>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {/* GRILLA EN 2 COLUMNAS (sm:grid-cols-2) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {productos.length === 0 ? (
               <p className="italic text-gray-400">Aún no hay productos cargados en la tienda...</p>
             ) : (
               productos.map((prod) => (
                 <Card key={prod.id} shadow="sm" className="bg-white border-none hover:shadow-md transition-shadow">
-                  <CardBody className="overflow-visible p-0">
+                  <CardBody className="overflow-visible p-0 relative">
+                    
+                    {/* Etiqueta de Categoría sobre la foto */}
+                    {prod.categoria && (
+                      <span className="absolute top-3 left-3 z-10 px-3 py-1 text-[10px] font-bold tracking-wider text-white bg-[#B5838D]/90 backdrop-blur-sm rounded-full uppercase shadow-sm">
+                        {prod.categoria}
+                      </span>
+                    )}
+
                     <Image
                       shadow="none"
                       radius="none"
@@ -93,14 +104,36 @@ export default function Home() {
                       src={prod.imagenUrl || "https://via.placeholder.com/250"}
                     />
                   </CardBody>
-                  <CardFooter className="flex-col items-start gap-1 p-5">
-                    <b className="text-md font-medium text-[#4A4A4A] uppercase tracking-wide">{prod.nombre}</b>
-                    <p className="text-[#B5838D] text-lg font-semibold">${prod.precio}</p>
+                  
+                  <CardFooter className="flex-col items-start gap-2 p-5">
+                    <div className="w-full">
+                      <b className="text-md font-medium text-[#4A4A4A] uppercase tracking-wide">{prod.nombre}</b>
+                      
+                      {/* Descripción del producto */}
+                      {prod.descripcion && (
+                        <p className="text-sm text-[#6D6875] font-light mt-1 line-clamp-2 leading-relaxed">
+                          {prod.descripcion}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="w-full flex items-center justify-between mt-2">
+                      <p className="text-[#B5838D] text-xl font-semibold">${prod.precio}</p>
+                      
+                      {/* Avisos de Stock */}
+                      {prod.stock === 0 ? (
+                        <span className="text-xs text-red-400 font-medium bg-red-50 px-2 py-1 rounded-md">Agotado</span>
+                      ) : prod.stock <= 3 ? (
+                        <span className="text-xs text-orange-400 font-medium bg-orange-50 px-2 py-1 rounded-md">¡Últimos {prod.stock}!</span>
+                      ) : null}
+                    </div>
+
                     <Button 
-                      className="w-full mt-3 bg-[#E5989B] text-white font-medium shadow-sm hover:bg-[#B5838D]" 
+                      className="w-full mt-3 text-white font-medium shadow-sm bg-[#E5989B] hover:bg-[#B5838D]" 
                       onClick={() => agregarAlCarrito(prod)}
+                      isDisabled={prod.stock === 0} // Bloquea el botón si no hay stock
                     >
-                      Añadir al carrito
+                      {prod.stock === 0 ? "Sin stock" : "Añadir al carrito"}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -117,7 +150,6 @@ export default function Home() {
             <p className="text-gray-400 font-light text-center py-8">Tu carrito está vacío.</p>
           ) : (
             <div className="flex flex-col gap-4">
-              {/* Lista de productos en el carrito */}
               {carrito.map((item, index) => (
                 <div key={index} className="flex justify-between items-center border-b border-gray-100 pb-2">
                   <span className="text-sm font-medium text-[#6D6875] truncate w-2/3">{item.nombre}</span>
@@ -125,7 +157,6 @@ export default function Home() {
                 </div>
               ))}
               
-              {/* Total y botón de pago */}
               <div className="flex justify-between items-center mt-2 pt-4 font-bold text-lg text-[#4A4A4A]">
                 <span>Total:</span>
                 <span>${totalCarrito}</span>
