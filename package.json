@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@nextui-org/react": "latest",
-    "firebase": "latest",
+    "firebase": "^12.11.0",
     "framer-motion": "latest",
     "lucide-react": "latest",
     "mercadopago": "latest",
