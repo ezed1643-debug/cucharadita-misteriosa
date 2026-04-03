@@ -33,19 +33,16 @@ export default function Home() {
     obtenerProductos();
   }, []);
 
-  // LÓGICA DE AGRUPACIÓN Y STOCK
   const agregarAlCarrito = (producto) => {
     const itemEnCarrito = carrito.find((item) => item.id === producto.id);
     const cantidadActual = itemEnCarrito ? itemEnCarrito.cantidad : 0;
 
-    // Verificar si hay stock disponible para sumar uno más
     if (cantidadActual >= producto.stock) {
       alert("Lo sentimos, no hay más unidades disponibles de este producto.");
       return;
     }
 
     if (itemEnCarrito) {
-      // Si ya existe, aumentamos la cantidad
       setCarrito(
         carrito.map((item) =>
           item.id === producto.id
@@ -54,7 +51,6 @@ export default function Home() {
         )
       );
     } else {
-      // Si no existe, lo agregamos con cantidad 1
       setCarrito([...carrito, { ...producto, cantidad: 1 }]);
     }
   };
@@ -63,7 +59,6 @@ export default function Home() {
     setCarrito(carrito.filter((item) => item.id !== idAEliminar));
   };
 
-  // Cálculo del total considerando cantidades
   const totalCarrito = carrito.reduce(
     (total, item) => total + Number(item.precio) * item.cantidad,
     0
@@ -91,7 +86,6 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center p-3 sm:p-6 md:p-12">
       
-      {/* CABECERA */}
       <div className="w-full max-w-7xl mb-8 md:mb-12 text-center mt-4">
         <h1 className={`${playfair.className} text-4xl sm:text-5xl md:text-6xl font-bold mb-3 text-[#B5838D] italic tracking-wide`}>
           Cucharadita Misteriosa
@@ -103,7 +97,6 @@ export default function Home() {
 
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl">
         
-        {/* CATÁLOGO */}
         <div className="flex-1">
           <h2 className={`${playfair.className} text-2xl mb-4 md:mb-6 text-[#4A4A4A] border-b pb-2`}>
             Nuestros Productos
@@ -111,7 +104,6 @@ export default function Home() {
           
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
             {productos.map((prod) => {
-              // Calculamos cuántos hay de este producto en el carrito para bloquear el botón
               const cantidadEnCarrito = carrito.find(i => i.id === prod.id)?.cantidad || 0;
               const sinStockDisponible = prod.stock === 0 || cantidadEnCarrito >= prod.stock;
 
@@ -138,18 +130,20 @@ export default function Home() {
                     
                     <div className="w-full flex items-center justify-between mt-1 sm:mt-2">
                       <p className="text-[#B5838D] text-sm sm:text-xl font-semibold">${prod.precio}</p>
-                      {prod.stock === 0 && (
-                        <span className="text-[9px] sm:text-xs text-red-400 font-medium bg-red-50 px-1 py-0.5 rounded-md uppercase">Agotado</span>
-                      )}
                     </div>
 
                     <Button 
                       size="sm"
-                      className={`w-full mt-2 text-white text-[10px] sm:text-sm font-medium shadow-sm ${sinStockDisponible ? 'bg-gray-300' : 'bg-[#E5989B] hover:bg-[#B5838D]'}`} 
+                      // AQUÍ APLICAMOS EL CAMBIO DE COLOR ROJO INTENSO SI NO HAY STOCK
+                      className={`w-full mt-2 text-white text-[10px] sm:text-sm font-bold shadow-sm tracking-wide ${
+                        sinStockDisponible 
+                          ? 'bg-red-600 !opacity-100' 
+                          : 'bg-[#E5989B] hover:bg-[#B5838D]'
+                      }`} 
                       onClick={() => agregarAlCarrito(prod)}
                       isDisabled={sinStockDisponible} 
                     >
-                      {prod.stock === 0 ? "Agotado" : cantidadEnCarrito >= prod.stock ? "Límite alcanzado" : "Añadir"}
+                      {sinStockDisponible ? "AGOTADO!" : "Añadir"}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -158,7 +152,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* CARRITO AGRUPADO */}
         <div className="w-full lg:w-80 h-fit sticky top-6 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-[#FCD5CE]">
           <h2 className={`${playfair.className} text-xl sm:text-2xl mb-4 sm:mb-6 text-[#B5838D]`}>Tu Compra</h2>
           
