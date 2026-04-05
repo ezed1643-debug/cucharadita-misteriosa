@@ -3,8 +3,9 @@ import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 // Configuración inicial de Mercado Pago
 // Reemplaza "TU_ACCESS_TOKEN_AQUI" por el tuyo, o asegúrate de tenerlo en las variables de entorno de Vercel
-    const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
-    const preference = new Preference(client);
+const client = new MercadoPagoConfig({ 
+  accessToken: process.env.MP_ACCESS_TOKEN || "APP_USR-8137466774618389-040215-b3160a74a6f7a8cf59fbd4732f337e81-3311076492" 
+});
 
 export async function POST(req) {
   try {
