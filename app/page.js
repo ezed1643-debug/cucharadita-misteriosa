@@ -65,7 +65,7 @@ export default function Home() {
   const totalProductos = carrito.reduce((t, i) => t + (Number(i.precio) * i.cantidad), 0);
   const totalFinal = totalProductos + costoEnvio;
 
-  // FUNCIÓN MAESTRA: GUARDA PEDIDO Y PAGA
+// FUNCIÓN MAESTRA: GUARDA PEDIDO Y PAGA
   const finalizarCompra = async () => {
     if (!nombre || !apellido || !whatsapp) {
       alert("Por favor, completa tus datos de contacto.");
@@ -75,9 +75,8 @@ export default function Home() {
     setCargandoPagos(true);
 
     try {
-      // 1. Guardamos el pedido en Firebase (Colección 'pedidos')
-      // Esto es lo que verás en tu sección "Ventas Recibidas"
-      await addDoc(collection(db, "pedidos"), {
+      // 1. Guardamos el pedido y ATRAPAMOS SU ID
+      const nuevoPedidoRef = await addDoc(collection(db, "pedidos"), {
         cliente: {
           nombre: `${nombre} ${apellido}`,
           whatsapp: whatsapp,
@@ -87,23 +86,26 @@ export default function Home() {
         items: carrito.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
         total: totalFinal,
         fecha: serverTimestamp(),
-        estado: "Pendiente de Pago"
+        estado: "Pendiente de Pago" // Inicia como pendiente
       });
 
-      // 2. Conectamos con Mercado Pago
+      const pedidoId = nuevoPedidoRef.id; // ¡Aquí capturamos el ID exacto!
+
+      // 2. Conectamos con Mercado Pago y le pasamos el pedidoId
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           carrito, 
           costoEnvio, 
-          cliente: { nombre: `${nombre} ${apellido}`, whatsapp } 
+          cliente: { nombre: `${nombre} ${apellido}`, whatsapp },
+          pedidoId: pedidoId // Le pasamos el ID a tu API secreta
         }), 
       });
       
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url; // Redirección final
+        window.location.href = data.url; 
       }
     } catch (error) {
       console.error("Error:", error);
