@@ -16,7 +16,8 @@
     "mercadopago": "latest",
     "next": "latest",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.27",

@@ -171,7 +171,7 @@ export default function Home() {
                 <p className="text-[10px] font-bold text-[#6D6875] uppercase tracking-widest">Tus Datos</p>
                 <Input size="sm" variant="underlined" label="Nombre" value={nombre} onValueChange={setNombre} />
                 <Input size="sm" variant="underlined" label="Apellido" value={apellido} onValueChange={setApellido} />
-                <Input size="sm" variant="underlined" label="WhatsApp" placeholder="Ej: 3436575042" value={whatsapp} onValueChange={setWhatsapp} />
+                <Input size="sm" variant="underlined" label="WhatsApp" placeholder="Ej: 3436" value={whatsapp} onValueChange={setWhatsapp} />
               </div>
 
               {/* OPCIONES DE ENVÍO */}
