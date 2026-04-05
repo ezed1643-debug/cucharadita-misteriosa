@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // ESTO OBLIGA A VERCEL A NO USAR CACHÉ
+
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
