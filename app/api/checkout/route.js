@@ -1,30 +1,26 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
-// Configuración inicial de Mercado Pago
-// Reemplaza "TU_ACCESS_TOKEN_AQUI" por el tuyo, o asegúrate de tenerlo en las variables de entorno de Vercel
+// Reemplaza esto con tu Access Token de PRODUCCIÓN real (el que empieza con APP_USR-)
 const client = new MercadoPagoConfig({ 
-  accessToken: process.env.MP_ACCESS_TOKEN || "APP_USR-8137466774618389-040215-b3160a74a6f7a8cf59fbd4732f337e81-3311076492" 
+  accessToken: "APP_USR-8137466774618389-040215-b3160a74a6f7a8cf59fbd4732f337e81-3311076492" 
 });
 
 export async function POST(req) {
   try {
-    // Atrapamos la dirección de tu página web automáticamente (localhost en tu PC o tu link en Vercel)
     const origin = req.headers.get("origin") || `https://${req.headers.get("host")}`;
-    
-    // Recibimos los datos que nos mandó la página principal
     const data = await req.json();
-    const { carrito, costoEnvio, cliente, pedidoId } = data;
+    const { carrito, costoEnvio, pedidoId } = data; // Quitamos 'cliente' de aquí por seguridad
 
-    // 1. Transformamos los productos de tu carrito al formato exacto que exige Mercado Pago
+    // 1. Armamos la lista de productos estricta
     const itemsMercadoPago = carrito.map((producto) => ({
       title: producto.nombre,
-      unit_price: Number(producto.precio),
-      quantity: Number(producto.cantidad),
+      unit_price: Number(producto.precio), // Obligamos a que sea un número
+      quantity: Number(producto.cantidad), // Obligamos a que sea un número entero
       currency_id: "ARS",
     }));
 
-    // 2. Si el cliente eligió envío a domicilio, lo sumamos a la boleta como un ítem extra
+    // 2. Sumamos el envío si lo hay
     if (costoEnvio > 0) {
       itemsMercadoPago.push({
         title: "Costo de Envío",
@@ -34,30 +30,26 @@ export async function POST(req) {
       });
     }
 
-    // 3. Creamos la "Preferencia de Pago" (la orden de cobro)
+    // 3. Creamos la orden de cobro súper limpia
     const preference = new Preference(client);
     
     const result = await preference.create({
       body: {
         items: itemsMercadoPago,
-        payer: {
-          name: cliente?.nombre || "Cliente Cucharadita",
-        },
-        // EL PUENTE INVISIBLE: Qué hace Mercado Pago cuando el cliente termina
+        // El puente invisible
         back_urls: {
-          success: `${origin}/api/confirmar?pedidoId=${pedidoId}`, // Si paga bien, confirmamos la orden
-          failure: `${origin}/`, // Si falla o cancela, lo devolvemos a tu tienda
+          success: `${origin}/api/confirmar?pedidoId=${pedidoId}`, 
+          failure: `${origin}/`, 
           pending: `${origin}/`
         },
-        auto_return: "approved", // Redirige al cliente automáticamente sin que tenga que tocar un botón
+        auto_return: "approved",
       }
     });
 
-    // 4. Le devolvemos a la web el link de pago oficial de Mercado Pago
     return NextResponse.json({ url: result.init_point });
     
   } catch (error) {
-    console.error("Error al crear preferencia de Mercado Pago:", error);
-    return NextResponse.json({ error: "Hubo un problema al procesar el pago." }, { status: 500 });
+    console.error("Error exacto de MP:", error);
+    return NextResponse.json({ error: "Hubo un problema" }, { status: 500 });
   }
 }
