@@ -5,23 +5,19 @@ import { db } from "../lib/firebase";
 import { Card, CardBody, CardFooter, Image, Button, RadioGroup, Radio, Input } from "@nextui-org/react";
 import { Playfair_Display } from 'next/font/google';
 
-const playfair = Playfair_Display({ 
-  subsets: ['latin'], 
-  weight: ['400', '600', '700'], 
-  style: ['italic', 'normal'] 
-});
+const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700'], style: ['italic', 'normal'] });
 
 export default function Home() {
   const [productos, setProductos] = useState([]);
   const [carrito, setCarrito] = useState([]);
   const [cargandoPagos, setCargandoPagos] = useState(false);
+  const [compraFinalizada, setCompraFinalizada] = useState(false); // NUEVO ESTADO
+  const [ordenId, setOrdenId] = useState(""); // PARA MOSTRARLE AL CLIENTE
   
-  // Datos del Cliente para el mini-formulario
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   
-  // Logística
   const [metodoEntrega, setMetodoEntrega] = useState("retiro");
   const [codigoPostal, setCodigoPostal] = useState("");
   const [costoEnvio, setCostoEnvio] = useState(0);
@@ -31,9 +27,7 @@ export default function Home() {
       try {
         const querySnapshot = await getDocs(collection(db, "productos"));
         const docs = [];
-        querySnapshot.forEach((doc) => {
-          docs.push({ id: doc.id, ...doc.data() });
-        });
+        querySnapshot.forEach((doc) => docs.push({ id: doc.id, ...doc.data() }));
         docs.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
         setProductos(docs);
       } catch (error) { console.error(error); }
@@ -41,7 +35,6 @@ export default function Home() {
     obtenerProductos();
   }, []);
 
-  // Lógica de Envío Victoria $1000 / Correo Argentino Est. $5500
   useEffect(() => {
     if (metodoEntrega === "envio") {
       if (codigoPostal === "3153") setCostoEnvio(1000);
@@ -53,11 +46,8 @@ export default function Home() {
   const agregarAlCarrito = (producto) => {
     const item = carrito.find((i) => i.id === producto.id);
     if (item && item.cantidad >= producto.stock) return;
-    if (item) {
-      setCarrito(carrito.map((i) => i.id === producto.id ? { ...i, cantidad: i.cantidad + 1 } : i));
-    } else {
-      setCarrito([...carrito, { ...producto, cantidad: 1 }]);
-    }
+    if (item) setCarrito(carrito.map((i) => i.id === producto.id ? { ...i, cantidad: i.cantidad + 1 } : i));
+    else setCarrito([...carrito, { ...producto, cantidad: 1 }]);
   };
 
   const eliminarDelCarrito = (id) => setCarrito(carrito.filter((i) => i.id !== id));
@@ -65,54 +55,46 @@ export default function Home() {
   const totalProductos = carrito.reduce((t, i) => t + (Number(i.precio) * i.cantidad), 0);
   const totalFinal = totalProductos + costoEnvio;
 
-// FUNCIÓN MAESTRA: GUARDA PEDIDO Y PAGA
+  // NUEVA FUNCIÓN MAESTRA SIN API EXTERNA
   const finalizarCompra = async () => {
     if (!nombre || !apellido || !whatsapp) {
       alert("Por favor, completa tus datos de contacto.");
+      return;
+    }
+    if (metodoEntrega === "envio" && !codigoPostal) {
+      alert("Por favor, ingresa tu Código Postal.");
       return;
     }
 
     setCargandoPagos(true);
 
     try {
-      // 1. Guardamos el pedido y ATRAPAMOS SU ID
+      // 1. Guardamos el pedido en Firebase
       const nuevoPedidoRef = await addDoc(collection(db, "pedidos"), {
-        cliente: {
-          nombre: `${nombre} ${apellido}`,
-          whatsapp: whatsapp,
-          metodoEntrega: metodoEntrega,
-          codigoPostal: codigoPostal || "N/A"
-        },
+        cliente: { nombre: `${nombre} ${apellido}`, whatsapp, metodoEntrega, codigoPostal: codigoPostal || "N/A" },
         items: carrito.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
         total: totalFinal,
         fecha: serverTimestamp(),
-        estado: "Pendiente de Pago" // Inicia como pendiente
+        estado: "Pendiente de Pago" 
       });
 
-      const pedidoId = nuevoPedidoRef.id; // ¡Aquí capturamos el ID exacto!
-
-      // 2. Conectamos con Mercado Pago y le pasamos el pedidoId
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          carrito, 
-          costoEnvio, 
-          cliente: { nombre: `${nombre} ${apellido}`, whatsapp },
-          pedidoId: pedidoId // Le pasamos el ID a tu API secreta
-        }), 
-      });
+      // 2. Guardamos el ID cortito para mostrárselo al cliente
+      setOrdenId(nuevoPedidoRef.id.substring(0, 6).toUpperCase());
       
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url; 
-      }
+      // 3. Cambiamos la pantalla para mostrar el Alias
+      setCompraFinalizada(true);
+
     } catch (error) {
       console.error("Error:", error);
       alert("Hubo un error al procesar el pedido.");
     } finally {
       setCargandoPagos(false);
     }
+  };
+
+  const enviarComprobanteWA = () => {
+    const mensaje = `¡Hola! Acabo de hacer el pedido *#${ordenId}* en Cucharadita Misteriosa por un total de *$${totalFinal}*. Te adjunto el comprobante de transferencia a tu Mercado Pago.`;
+    window.open(`https://wa.me/5493436575042?text=${encodeURIComponent(mensaje)}`, '_blank');
   };
 
   return (
@@ -125,7 +107,7 @@ export default function Home() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl">
-        {/* CATÁLOGO */}
+        {/* CATÁLOGO (Queda igual) */}
         <div className="flex-1">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
             {productos.map((prod) => {
@@ -149,59 +131,89 @@ export default function Home() {
           </div>
         </div>
 
-        {/* CARRITO CON FORMULARIO */}
+        {/* CARRITO Y PANTALLA DE PAGO */}
         <div className="w-full lg:w-96 h-fit sticky top-6 bg-white p-6 rounded-2xl shadow-sm border border-[#FCD5CE]">
-          <h2 className={`${playfair.className} text-2xl mb-6 text-[#B5838D]`}>Tu Compra</h2>
           
-          {carrito.length === 0 ? (
-            <p className="text-gray-400 text-center py-8 text-sm italic">El carrito está vacío.</p>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {/* Productos en el Carrito */}
-              {carrito.map((item) => (
-                <div key={item.id} className="flex justify-between items-center border-b pb-2">
-                  <span className="text-sm font-medium w-2/3 truncate">{item.nombre} (x{item.cantidad})</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-[#4A4A4A]">${item.precio * item.cantidad}</span>
-                    <button onClick={() => eliminarDelCarrito(item.id)} className="text-red-300 font-bold text-lg">×</button>
-                  </div>
-                </div>
-              ))}
-
-              {/* MINI FORMULARIO DE CONTACTO */}
-              <div className="flex flex-col gap-3 mt-2 p-3 bg-[#FCF9F6] rounded-xl border border-[#FCD5CE]">
-                <p className="text-[10px] font-bold text-[#6D6875] uppercase tracking-widest">Tus Datos</p>
-                <Input size="sm" variant="underlined" label="Nombre" value={nombre} onValueChange={setNombre} />
-                <Input size="sm" variant="underlined" label="Apellido" value={apellido} onValueChange={setApellido} />
-                <Input size="sm" variant="underlined" label="WhatsApp" placeholder="Ej: 3436" value={whatsapp} onValueChange={setWhatsapp} />
-              </div>
-
-              {/* OPCIONES DE ENVÍO */}
-              <div className="p-3">
-                <RadioGroup value={metodoEntrega} onValueChange={setMetodoEntrega} color="secondary" size="sm">
-                  <Radio value="retiro">Retiro en Victoria</Radio>
-                  <Radio value="envio">Envío a domicilio</Radio>
-                </RadioGroup>
-                {metodoEntrega === "envio" && (
-                  <Input size="sm" label="Código Postal" className="mt-3 max-w-[120px]" value={codigoPostal} onValueChange={setCodigoPostal} />
-                )}
-              </div>
+          {compraFinalizada ? (
+            // PANTALLA DE TRANSFERENCIA (PASO 2)
+            <div className="flex flex-col items-center text-center gap-4 animate-appearance-in">
+              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mb-2">✓</div>
+              <h2 className={`${playfair.className} text-2xl text-[#4A4A4A] font-bold`}>¡Pedido Registrado!</h2>
+              <p className="text-sm text-[#6D6875]">Tu número de orden es: <b className="text-[#B5838D]">#{ordenId}</b></p>
               
-              <div className="border-t pt-4 mt-2">
-                <div className="flex justify-between font-bold text-2xl text-[#4A4A4A]">
-                  <span>TOTAL:</span>
-                  <span>${totalFinal}</span>
+              <div className="w-full bg-[#FCF9F6] p-4 rounded-xl border border-[#FCD5CE] mt-2">
+                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Datos para pagar</p>
+                <p className="text-lg text-[#4A4A4A]">Total a transferir:</p>
+                <p className="text-3xl font-bold text-[#B5838D] my-1">${totalFinal}</p>
+                <div className="mt-4 text-left border-t border-gray-200 pt-3">
+                  <p className="text-sm text-gray-600"><b>Alias MP:</b> cucharadita.mp</p>
+                  <p className="text-sm text-gray-600"><b>A nombre de:</b> [Tu Nombre/Empresa]</p>
                 </div>
               </div>
-              
+
+              <p className="text-xs text-gray-400 italic px-2 mt-2">
+                Realiza la transferencia desde tu cuenta y envíanos el comprobante por WhatsApp para confirmar tu compra.
+              </p>
+
               <Button 
-                className="w-full mt-4 bg-[#6D6875] text-white font-bold h-14 shadow-xl text-lg"
-                isLoading={cargandoPagos}
-                onClick={finalizarCompra}
+                className="w-full mt-2 bg-[#25D366] text-white font-bold h-12 shadow-lg"
+                onClick={enviarComprobanteWA}
               >
-                PAGAR AHORA
+                Enviar Comprobante
               </Button>
             </div>
+          ) : (
+            // CARRITO NORMAL (PASO 1)
+            <>
+              <h2 className={`${playfair.className} text-2xl mb-6 text-[#B5838D]`}>Tu Compra</h2>
+              {carrito.length === 0 ? (
+                <p className="text-gray-400 text-center py-8 text-sm italic">El carrito está vacío.</p>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {carrito.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center border-b pb-2">
+                      <span className="text-sm font-medium w-2/3 truncate">{item.nombre} (x{item.cantidad})</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[#4A4A4A]">${item.precio * item.cantidad}</span>
+                        <button onClick={() => eliminarDelCarrito(item.id)} className="text-red-300 font-bold text-lg">×</button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="flex flex-col gap-3 mt-2 p-3 bg-[#FCF9F6] rounded-xl border border-[#FCD5CE]">
+                    <p className="text-[10px] font-bold text-[#6D6875] uppercase tracking-widest">Tus Datos</p>
+                    <Input size="sm" variant="underlined" label="Nombre" value={nombre} onValueChange={setNombre} />
+                    <Input size="sm" variant="underlined" label="Apellido" value={apellido} onValueChange={setApellido} />
+                    <Input size="sm" variant="underlined" label="WhatsApp" placeholder="Ej: 3436575042" value={whatsapp} onValueChange={setWhatsapp} />
+                  </div>
+
+                  <div className="p-3">
+                    <RadioGroup value={metodoEntrega} onValueChange={setMetodoEntrega} color="secondary" size="sm">
+                      <Radio value="retiro">Retiro en Victoria</Radio>
+                      <Radio value="envio">Envío a domicilio</Radio>
+                    </RadioGroup>
+                    {metodoEntrega === "envio" && (
+                      <Input size="sm" label="Código Postal" className="mt-3 max-w-[120px]" value={codigoPostal} onValueChange={setCodigoPostal} />
+                    )}
+                  </div>
+                  
+                  <div className="border-t pt-4 mt-2">
+                    <div className="flex justify-between font-bold text-2xl text-[#4A4A4A]">
+                      <span>TOTAL:</span>
+                      <span>${totalFinal}</span>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    className="w-full mt-4 bg-[#6D6875] text-white font-bold h-14 shadow-xl text-lg"
+                    isLoading={cargandoPagos}
+                    onClick={finalizarCompra}
+                  >
+                    CONTINUAR PAGO
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
