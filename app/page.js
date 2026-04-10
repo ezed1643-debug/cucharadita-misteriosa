@@ -11,8 +11,11 @@ export default function Home() {
   const [productos, setProductos] = useState([]);
   const [carrito, setCarrito] = useState([]);
   const [cargandoPagos, setCargandoPagos] = useState(false);
-  const [compraFinalizada, setCompraFinalizada] = useState(false); // NUEVO ESTADO
-  const [ordenId, setOrdenId] = useState(""); // PARA MOSTRARLE AL CLIENTE
+  const [compraFinalizada, setCompraFinalizada] = useState(false); 
+  const [ordenId, setOrdenId] = useState(""); 
+  
+  // NUEVO: Estado para la categoría seleccionada
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("Todas");
   
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
@@ -55,7 +58,6 @@ export default function Home() {
   const totalProductos = carrito.reduce((t, i) => t + (Number(i.precio) * i.cantidad), 0);
   const totalFinal = totalProductos + costoEnvio;
 
-  // NUEVA FUNCIÓN MAESTRA SIN API EXTERNA
   const finalizarCompra = async () => {
     if (!nombre || !apellido || !whatsapp) {
       alert("Por favor, completa tus datos de contacto.");
@@ -69,7 +71,6 @@ export default function Home() {
     setCargandoPagos(true);
 
     try {
-      // 1. Guardamos el pedido en Firebase
       const nuevoPedidoRef = await addDoc(collection(db, "pedidos"), {
         cliente: { nombre: `${nombre} ${apellido}`, whatsapp, metodoEntrega, codigoPostal: codigoPostal || "N/A" },
         items: carrito.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
@@ -78,10 +79,7 @@ export default function Home() {
         estado: "Pendiente de Pago" 
       });
 
-      // 2. Guardamos el ID cortito para mostrárselo al cliente
       setOrdenId(nuevoPedidoRef.id.substring(0, 6).toUpperCase());
-      
-      // 3. Cambiamos la pantalla para mostrar el Alias
       setCompraFinalizada(true);
 
     } catch (error) {
@@ -93,13 +91,40 @@ export default function Home() {
   };
 
   const enviarComprobanteWA = () => {
-    const mensaje = `¡Hola! Acabo de hacer el pedido *#${ordenId}* en Cucharadita Misteriosa por un total de *$${totalFinal}*. Te adjunto el comprobante de transferencia a tu Mercado Pago.`;
+    const mensaje = `¡Hola! Acabo de hacer el pedido *#${ordenId}* en Cucharadita Misteriosa por un total de *$${totalFinal}*. Te adjunto el comprobante de transferencia a tu cuenta.`;
     window.open(`https://wa.me/5493436575042?text=${encodeURIComponent(mensaje)}`, '_blank');
   };
 
+  // NUEVO: Extraemos las categorías únicas de los productos para armar los botones
+  const categoriasExisten = ["Todas", ...Array.from(new Set(productos.map(p => p.categoria).filter(Boolean)))];
+  
+  // NUEVO: Filtramos los productos según la categoría tocada
+  const productosFiltrados = categoriaSeleccionada === "Todas" 
+    ? productos 
+    : productos.filter(p => p.categoria === categoriaSeleccionada);
+
+  // NUEVO: Función para deslizar suavemente hacia el carrito
+  const irAlCarrito = () => {
+    document.getElementById("carrito-seccion")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center p-3 sm:p-6 md:p-12">
+    <main className="flex min-h-screen flex-col items-center p-3 sm:p-6 md:p-12 relative">
       
+      {/* BOTÓN FLOTANTE CARRITO (Visible solo en celular/tablet cuando hay productos) */}
+      {carrito.length > 0 && !compraFinalizada && (
+        <div className="fixed bottom-6 right-6 z-50 lg:hidden animate-appearance-in">
+          <Button 
+            radius="full" 
+            size="lg" 
+            className="bg-[#6D6875] text-white shadow-2xl border-2 border-white px-6 font-bold text-md"
+            onClick={irAlCarrito}
+          >
+            🛒 Ver Carrito ({carrito.reduce((t, i) => t + i.cantidad, 0)})
+          </Button>
+        </div>
+      )}
+
       <div className="w-full max-w-7xl mb-12 text-center mt-4 px-4">
         <h1 className={`${playfair.className} text-5xl sm:text-7xl font-bold mb-4 text-[#B5838D] italic`}>Cucharadita Misteriosa</h1>
         <p className="text-xl sm:text-2xl font-bold text-[#4A4A4A] mb-2 uppercase tracking-wide">Descubre tu esencia</p>
@@ -107,35 +132,65 @@ export default function Home() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl">
-        {/* CATÁLOGO (Queda igual) */}
+        
+        {/* SECCIÓN CATÁLOGO */}
         <div className="flex-1">
+          
+          {/* NUEVO: BOTONERA DE FILTROS POR CATEGORÍA */}
+          <div className="flex flex-wrap gap-2 mb-6 border-b border-[#FCD5CE] pb-4">
+            {categoriasExisten.map(cat => (
+              <Button
+                key={cat}
+                size="sm"
+                radius="full"
+                variant={categoriaSeleccionada === cat ? "solid" : "flat"}
+                className={`font-bold text-xs tracking-wider transition-all ${
+                  categoriaSeleccionada === cat 
+                    ? "bg-[#B5838D] text-white shadow-md" 
+                    : "bg-[#FCF9F6] text-[#6D6875] hover:bg-[#E5989B] hover:text-white"
+                }`}
+                onClick={() => setCategoriaSeleccionada(cat)}
+              >
+                {cat}
+              </Button>
+            ))}
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
-            {productos.map((prod) => {
-              const cantCarrito = carrito.find(i => i.id === prod.id)?.cantidad || 0;
-              const sinStock = prod.stock === 0 || cantCarrito >= prod.stock;
-              return (
-                <Card key={prod.id} shadow="sm" className="bg-white border-none">
-                  <CardBody className="p-0 relative">
-                    <Image shadow="none" radius="none" width="100%" className="w-full object-cover h-[160px] sm:h-[250px]" src={prod.imagenUrl} />
-                  </CardBody>
-                  <CardFooter className="flex-col items-start p-3 sm:p-5">
-                    <b className="text-xs sm:text-md uppercase truncate w-full">{prod.nombre}</b>
-                    <p className="text-[#B5838D] font-semibold">${prod.precio}</p>
-                    <Button size="sm" className={`w-full mt-2 text-white font-bold ${sinStock ? 'bg-red-600 !opacity-100' : 'bg-[#E5989B]'}`} onClick={() => agregarAlCarrito(prod)} isDisabled={sinStock}>
-                      {sinStock ? "AGOTADO!" : "Añadir"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              );
-            })}
+            {productosFiltrados.length === 0 ? (
+              <p className="col-span-full text-center py-10 text-gray-400 italic">No hay productos en esta categoría.</p>
+            ) : (
+              productosFiltrados.map((prod) => {
+                const cantCarrito = carrito.find(i => i.id === prod.id)?.cantidad || 0;
+                const sinStock = prod.stock === 0 || cantCarrito >= prod.stock;
+                return (
+                  <Card key={prod.id} shadow="sm" className="bg-white border-none">
+                    <CardBody className="p-0 relative">
+                      {prod.categoria && (
+                        <span className="absolute top-2 left-2 z-10 px-2 py-1 text-[8px] sm:text-[10px] font-bold text-white bg-[#B5838D]/90 backdrop-blur-sm rounded-full uppercase shadow-sm">
+                          {prod.categoria}
+                        </span>
+                      )}
+                      <Image shadow="none" radius="none" width="100%" className="w-full object-cover h-[160px] sm:h-[250px]" src={prod.imagenUrl} />
+                    </CardBody>
+                    <CardFooter className="flex-col items-start p-3 sm:p-5">
+                      <b className="text-xs sm:text-md uppercase truncate w-full">{prod.nombre}</b>
+                      <p className="text-[#B5838D] font-semibold">${prod.precio}</p>
+                      <Button size="sm" className={`w-full mt-2 text-white font-bold ${sinStock ? 'bg-red-600 !opacity-100' : 'bg-[#E5989B]'}`} onClick={() => agregarAlCarrito(prod)} isDisabled={sinStock}>
+                        {sinStock ? "AGOTADO!" : "Añadir"}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </div>
 
-        {/* CARRITO Y PANTALLA DE PAGO */}
-        <div className="w-full lg:w-96 h-fit sticky top-6 bg-white p-6 rounded-2xl shadow-sm border border-[#FCD5CE]">
+        {/* CARRITO Y PANTALLA DE PAGO (Agregamos el id="carrito-seccion") */}
+        <div id="carrito-seccion" className="w-full lg:w-96 h-fit sticky top-6 bg-white p-6 rounded-2xl shadow-sm border border-[#FCD5CE] scroll-mt-6">
           
           {compraFinalizada ? (
-            // PANTALLA DE TRANSFERENCIA (PASO 2)
             <div className="flex flex-col items-center text-center gap-4 animate-appearance-in">
               <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mb-2">✓</div>
               <h2 className={`${playfair.className} text-2xl text-[#4A4A4A] font-bold`}>¡Pedido Registrado!</h2>
@@ -146,7 +201,7 @@ export default function Home() {
                 <p className="text-lg text-[#4A4A4A]">Total a transferir:</p>
                 <p className="text-3xl font-bold text-[#B5838D] my-1">${totalFinal}</p>
                 <div className="mt-4 text-left border-t border-gray-200 pt-3">
-                  <p className="text-sm text-gray-600"><b>Alias:</b> belengutierrez.25</p>
+                  <p className="text-sm text-gray-600"><b>Alias:</b> belengutierrez.25 </p>
                   <p className="text-sm text-gray-600"><b>A nombre de:</b> María Belen Gutierrez </p>
                 </div>
               </div>
@@ -163,7 +218,6 @@ export default function Home() {
               </Button>
             </div>
           ) : (
-            // CARRITO NORMAL (PASO 1)
             <>
               <h2 className={`${playfair.className} text-2xl mb-6 text-[#B5838D]`}>Tu Compra</h2>
               {carrito.length === 0 ? (
