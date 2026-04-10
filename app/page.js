@@ -146,8 +146,8 @@ export default function Home() {
                 <p className="text-lg text-[#4A4A4A]">Total a transferir:</p>
                 <p className="text-3xl font-bold text-[#B5838D] my-1">${totalFinal}</p>
                 <div className="mt-4 text-left border-t border-gray-200 pt-3">
-                  <p className="text-sm text-gray-600"><b>Alias MP:</b> cucharadita.mp</p>
-                  <p className="text-sm text-gray-600"><b>A nombre de:</b> [Tu Nombre/Empresa]</p>
+                  <p className="text-sm text-gray-600"><b>Alias:</b> belengutierrez.25</p>
+                  <p className="text-sm text-gray-600"><b>A nombre de:</b> María Belen Gutierrez </p>
                 </div>
               </div>
 
