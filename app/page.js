@@ -4,7 +4,7 @@ import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore
 import { db } from "../lib/firebase"; 
 import { 
   Card, CardBody, CardFooter, Image, Button, RadioGroup, Radio, Input,
-  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure 
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, Divider 
 } from "@nextui-org/react";
 import { Playfair_Display } from 'next/font/google';
 
@@ -18,8 +18,8 @@ export default function Home() {
   const [ordenId, setOrdenId] = useState(""); 
   
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("Todas");
-  const [productoEnDetalle, setProductoEnDetalle] = useState(null); // NUEVO: Para el modal
-  const {isOpen, onOpen, onOpenChange} = useDisclosure(); // Control del modal
+  const [productoEnDetalle, setProductoEnDetalle] = useState(null); 
+  const {isOpen, onOpen, onOpenChange} = useDisclosure(); 
 
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
@@ -96,7 +96,6 @@ export default function Home() {
 
   const irAlCarrito = () => { document.getElementById("carrito-seccion")?.scrollIntoView({ behavior: "smooth" }); };
 
-  // NUEVO: Abrir modal de detalle
   const verDetalle = (producto) => {
     setProductoEnDetalle(producto);
     onOpen();
@@ -105,7 +104,6 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center p-3 sm:p-6 md:p-12 relative">
       
-      {/* BOTÓN FLOTANTE */}
       {carrito.length > 0 && !compraFinalizada && (
         <div className="fixed bottom-6 right-6 z-50 lg:hidden animate-appearance-in">
           <Button radius="full" size="lg" className="bg-[#6D6875] text-white shadow-2xl border-2 border-white px-6 font-bold" onClick={irAlCarrito}>
@@ -114,7 +112,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* CABECERA */}
       <div className="w-full max-w-7xl mb-12 text-center mt-4">
         <h1 className={`${playfair.className} text-5xl sm:text-7xl font-bold mb-4 text-[#B5838D] italic`}>Cucharadita Misteriosa</h1>
         <p className="text-xl sm:text-2xl font-bold text-[#4A4A4A] mb-2 uppercase tracking-wide">Descubre tu esencia</p>
@@ -123,7 +120,6 @@ export default function Home() {
 
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl">
         <div className="flex-1">
-          {/* FILTROS */}
           <div className="flex flex-wrap gap-2 mb-6 border-b border-[#FCD5CE] pb-4">
             {categoriasExisten.map(cat => (
               <Button key={cat} size="sm" radius="full" variant={categoriaSeleccionada === cat ? "solid" : "flat"}
@@ -133,7 +129,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* GRILLA DE PRODUCTOS */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
             {productosFiltrados.map((prod) => {
               const cantCarrito = carrito.find(i => i.id === prod.id)?.cantidad || 0;
@@ -157,7 +152,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* SECCIÓN CARRITO */}
         <div id="carrito-seccion" className="w-full lg:w-96 h-fit sticky top-6 bg-white p-6 rounded-2xl shadow-sm border border-[#FCD5CE]">
           {compraFinalizada ? (
             <div className="flex flex-col items-center text-center gap-4">
@@ -165,7 +159,7 @@ export default function Home() {
               <p className="text-sm">Orden: <b className="text-[#B5838D]">#{ordenId}</b></p>
               <div className="w-full bg-[#FCF9F6] p-4 rounded-xl border border-[#FCD5CE]">
                 <p className="text-3xl font-bold text-[#B5838D] mb-4">${totalFinal}</p>
-                <p className="text-sm text-gray-600"><b>Alias:</b> cucharadita.mp</p>
+                <p className="text-sm text-gray-600"><b>Alias MP:</b> cucharadita.mp</p>
                 <p className="text-sm text-gray-600"><b>Titular:</b> [Tu Nombre]</p>
               </div>
               <Button className="w-full bg-[#25D366] text-white font-bold" onClick={enviarComprobanteWA}>Enviar Comprobante</Button>
@@ -180,19 +174,23 @@ export default function Home() {
                       <span className="text-sm font-medium w-2/3 truncate">{item.nombre} (x{item.cantidad})</span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold">${item.precio * item.cantidad}</span>
-                        <button onClick={() => eliminarDelCarrito(item.id)} className="text-red-300">×</button>
+                        <button onClick={() => eliminarDelCarrito(item.id)} className="text-red-300 font-bold text-lg">×</button>
                       </div>
                     </div>
                   ))}
                   <div className="flex flex-col gap-3 p-3 bg-[#FCF9F6] rounded-xl border border-[#FCD5CE]">
                     <Input size="sm" variant="underlined" label="Nombre" value={nombre} onValueChange={setNombre} />
-                    <Input size="sm" variant="underlined" label="WhatsApp" value={whatsapp} onValueChange={setWhatsapp} />
+                    <Input size="sm" variant="underlined" label="Apellido" value={apellido} onValueChange={setApellido} />
+                    <Input size="sm" variant="underlined" label="WhatsApp" placeholder="Ej: 3436575042" value={whatsapp} onValueChange={setWhatsapp} />
                   </div>
                   <div className="p-3">
                     <RadioGroup value={metodoEntrega} onValueChange={setMetodoEntrega} size="sm">
                       <Radio value="retiro">Retiro en Victoria</Radio>
                       <Radio value="envio">Envío a domicilio</Radio>
                     </RadioGroup>
+                    {metodoEntrega === "envio" && (
+                      <Input size="sm" label="Código Postal" className="mt-3 max-w-[120px]" value={codigoPostal} onValueChange={setCodigoPostal} />
+                    )}
                   </div>
                   <div className="flex justify-between font-bold text-2xl text-[#4A4A4A] border-t pt-4">
                     <span>TOTAL:</span><span>${totalFinal}</span>
@@ -205,7 +203,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* MODAL DE DETALLE DE PRODUCTO */}
       <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" scrollBehavior="inside" backdrop="blur">
         <ModalContent>
           {(onClose) => (
