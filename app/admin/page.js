@@ -160,11 +160,10 @@ export default function AdminPanel() {
           </div>
         </Tab>
 
-        {/* 2. INVENTARIO CON GRILLA DE 3 COLUMNAS */}
+        {/* 2. INVENTARIO CON GRILLA DE 3 COLUMNAS Y TEXTO COMPLETO */}
         <Tab key="productos" title="💄 INVENTARIO">
           <div className="flex flex-col lg:flex-row gap-8 mt-6">
             
-            {/* COLUMNA IZQUIERDA: Formulario */}
             <div className="w-full lg:w-1/3">
               <Card className="p-6 bg-white shadow-sm h-fit lg:sticky lg:top-6">
                 <h2 className="text-xl font-bold text-[#4A4A4A] mb-4">{editandoId ? "Editar Producto" : "Nuevo Producto"}</h2>
@@ -195,7 +194,6 @@ export default function AdminPanel() {
               </Card>
             </div>
 
-            {/* COLUMNA DERECHA: Grilla de Productos */}
             <div className="w-full lg:w-2/3">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-h-[800px] p-2">
                 {productos.map(p => (
@@ -204,8 +202,9 @@ export default function AdminPanel() {
                     <div className="flex flex-col items-center text-center gap-2">
                       <img src={p.imagenUrl} className="w-full h-32 md:h-40 object-cover rounded-lg" />
                       <div className="w-full mt-2">
-                        <p className="font-bold text-sm text-[#4A4A4A] line-clamp-1" title={p.nombre}>{p.nombre}</p>
-                        <p className="text-xs text-[#B5838D] font-bold mt-1">${p.precio} <span className="text-gray-400 font-normal">| Disp: {p.stock}</span></p>
+                        {/* AQUÍ SE QUITÓ EL RECORTE: Ahora usa leading-tight para que el texto baje suavemente sin cortarse */}
+                        <p className="font-bold text-sm text-[#4A4A4A] leading-tight" title={p.nombre}>{p.nombre}</p>
+                        <p className="text-xs text-[#B5838D] font-bold mt-2">${p.precio} <span className="text-gray-400 font-normal">| Disp: {p.stock}</span></p>
                       </div>
                     </div>
                     
