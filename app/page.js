@@ -4,7 +4,7 @@ import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore
 import { db } from "../lib/firebase"; 
 import { 
   Card, CardBody, CardFooter, Image, Button, RadioGroup, Radio, Input,
-  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, Divider 
+  Modal, ModalContent, ModalHeader, ModalBody, useDisclosure, Divider 
 } from "@nextui-org/react";
 import { Playfair_Display } from 'next/font/google';
 
@@ -19,6 +19,8 @@ export default function Home() {
   
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("Todas");
   const [productoEnDetalle, setProductoEnDetalle] = useState(null); 
+  
+  // Agregamos "placement=center" para asegurar que aparezca en el medio
   const {isOpen, onOpen, onOpenChange} = useDisclosure(); 
 
   const [nombre, setNombre] = useState("");
@@ -123,7 +125,7 @@ export default function Home() {
           <div className="flex flex-wrap gap-2 mb-6 border-b border-[#FCD5CE] pb-4">
             {categoriasExisten.map(cat => (
               <Button key={cat} size="sm" radius="full" variant={categoriaSeleccionada === cat ? "solid" : "flat"}
-                className={`font-bold text-xs ${categoriaSeleccionada === cat ? "bg-[#B5838D] text-white" : "bg-white text-[#6D6875]"}`}
+                className={`font-bold text-xs ${categoriaSeleccionada === cat ? "bg-[#B5838D] text-white shadow-md" : "bg-white text-[#6D6875]"}`}
                 onClick={() => setCategoriaSeleccionada(cat)}
               > {cat} </Button>
             ))}
@@ -134,13 +136,13 @@ export default function Home() {
               const cantCarrito = carrito.find(i => i.id === prod.id)?.cantidad || 0;
               const sinStock = prod.stock === 0 || cantCarrito >= prod.stock;
               return (
-                <Card key={prod.id} shadow="sm" className="bg-white border-none cursor-pointer" isPressable onClick={() => verDetalle(prod)}>
+                <Card key={prod.id} shadow="sm" className="bg-white border-none cursor-pointer hover:shadow-md transition-shadow" isPressable onClick={() => verDetalle(prod)}>
                   <CardBody className="p-0 relative">
                     <Image shadow="none" radius="none" width="100%" className="w-full object-cover h-[160px] sm:h-[250px]" src={prod.imagenUrl} />
                   </CardBody>
                   <CardFooter className="flex-col items-start p-3 sm:p-5">
-                    <b className="text-xs sm:text-md uppercase truncate w-full">{prod.nombre}</b>
-                    <p className="text-[#B5838D] font-semibold">${prod.precio}</p>
+                    <b className="text-xs sm:text-md uppercase truncate w-full leading-tight">{prod.nombre}</b>
+                    <p className="text-[#B5838D] font-semibold mt-1">${prod.precio}</p>
                     <Button size="sm" className={`w-full mt-2 text-white font-bold ${sinStock ? 'bg-red-600' : 'bg-[#E5989B]'}`} 
                       onClick={(e) => { e.stopPropagation(); agregarAlCarrito(prod); }} isDisabled={sinStock}>
                       {sinStock ? "AGOTADO!" : "Añadir"}
@@ -152,7 +154,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div id="carrito-seccion" className="w-full lg:w-96 h-fit sticky top-6 bg-white p-6 rounded-2xl shadow-sm border border-[#FCD5CE]">
+        <div id="carrito-seccion" className="w-full lg:w-96 h-fit sticky top-6 bg-white p-6 rounded-2xl shadow-sm border border-[#FCD5CE] scroll-mt-6">
           {compraFinalizada ? (
             <div className="flex flex-col items-center text-center gap-4">
               <h2 className={`${playfair.className} text-2xl text-[#4A4A4A] font-bold`}>¡Pedido Registrado!</h2>
@@ -203,35 +205,40 @@ export default function Home() {
         </div>
       </div>
 
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" scrollBehavior="inside" backdrop="blur">
-        <ModalContent>
+      {/* MODAL OPTIMIZADO (Sin scroll externo) */}
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" placement="center" backdrop="blur">
+        <ModalContent className="max-h-[90vh]">
           {(onClose) => (
             <>
-              <ModalHeader className={`${playfair.className} text-2xl text-[#B5838D]`}>{productoEnDetalle?.nombre}</ModalHeader>
-              <ModalBody>
-                <div className="flex flex-col md:flex-row gap-6">
+              <ModalHeader className={`${playfair.className} text-xl md:text-2xl text-[#B5838D] pb-2`}>{productoEnDetalle?.nombre}</ModalHeader>
+              <ModalBody className="pb-6 pt-0">
+                <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center">
+                  
+                  {/* IMAGEN FIJA: No crece más allá de este límite */}
                   <div className="w-full md:w-1/2">
-                    <Image src={productoEnDetalle?.imagenUrl} className="w-full object-cover rounded-xl shadow-lg" />
+                    <Image src={productoEnDetalle?.imagenUrl} className="w-full h-[180px] sm:h-[220px] md:h-[280px] object-cover rounded-xl shadow-sm" />
                   </div>
-                  <div className="w-full md:w-1/2 flex flex-col gap-4">
+                  
+                  <div className="w-full md:w-1/2 flex flex-col gap-2 md:gap-3 h-full justify-between">
                     <div>
                       <span className="text-[10px] font-bold text-white bg-[#B5838D] px-2 py-1 rounded-full uppercase tracking-widest">{productoEnDetalle?.categoria}</span>
-                      <h3 className="text-3xl font-bold text-[#4A4A4A] mt-2">${productoEnDetalle?.precio}</h3>
+                      <h3 className="text-2xl md:text-3xl font-bold text-[#4A4A4A] mt-2">${productoEnDetalle?.precio}</h3>
                     </div>
                     
-                    <Divider />
+                    <Divider className="my-1"/>
                     
-                    <div>
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Descripción</p>
-                      <p className="text-[#6D6875] leading-relaxed whitespace-pre-wrap">
+                    {/* DESCRIPCIÓN CON MINI-SCROLL: Ocupa poco espacio pero permite leer texto largo */}
+                    <div className="max-h-[80px] md:max-h-[120px] overflow-y-auto pr-2">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Descripción</p>
+                      <p className="text-xs md:text-sm text-[#6D6875] leading-relaxed whitespace-pre-wrap">
                         {productoEnDetalle?.descripcion || "Este producto no tiene una descripción detallada todavía."}
                       </p>
                     </div>
 
-                    <div className="mt-auto pt-4">
-                       <p className="text-xs text-gray-400 mb-2">Stock disponible: {productoEnDetalle?.stock} unidades</p>
+                    <div className="mt-2">
+                       <p className="text-[10px] md:text-xs text-[#B5838D] mb-2 font-semibold italic">Stock disponible: {productoEnDetalle?.stock} unidades</p>
                        <Button 
-                        className="w-full bg-[#E5989B] text-white font-bold py-6 text-lg"
+                        className="w-full bg-[#E5989B] text-white font-bold h-10 md:h-12 text-sm md:text-md shadow-md"
                         isDisabled={productoEnDetalle?.stock === 0}
                         onClick={() => { agregarAlCarrito(productoEnDetalle); onClose(); }}
                        >
@@ -241,9 +248,6 @@ export default function Home() {
                   </div>
                 </div>
               </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={onClose} className="font-bold text-gray-400">Cerrar</Button>
-              </ModalFooter>
             </>
           )}
         </ModalContent>
