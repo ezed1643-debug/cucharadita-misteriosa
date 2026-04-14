@@ -2,7 +2,10 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../lib/firebase"; 
-import { Card, CardBody, CardFooter, Image, Button, RadioGroup, Radio, Input } from "@nextui-org/react";
+import { 
+  Card, CardBody, CardFooter, Image, Button, RadioGroup, Radio, Input,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure 
+} from "@nextui-org/react";
 import { Playfair_Display } from 'next/font/google';
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700'], style: ['italic', 'normal'] });
@@ -14,9 +17,10 @@ export default function Home() {
   const [compraFinalizada, setCompraFinalizada] = useState(false); 
   const [ordenId, setOrdenId] = useState(""); 
   
-  // NUEVO: Estado para la categoría seleccionada
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("Todas");
-  
+  const [productoEnDetalle, setProductoEnDetalle] = useState(null); // NUEVO: Para el modal
+  const {isOpen, onOpen, onOpenChange} = useDisclosure(); // Control del modal
+
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -67,9 +71,7 @@ export default function Home() {
       alert("Por favor, ingresa tu Código Postal.");
       return;
     }
-
     setCargandoPagos(true);
-
     try {
       const nuevoPedidoRef = await addDoc(collection(db, "pedidos"), {
         cliente: { nombre: `${nombre} ${apellido}`, whatsapp, metodoEntrega, codigoPostal: codigoPostal || "N/A" },
@@ -78,199 +80,178 @@ export default function Home() {
         fecha: serverTimestamp(),
         estado: "Pendiente de Pago" 
       });
-
       setOrdenId(nuevoPedidoRef.id.substring(0, 6).toUpperCase());
       setCompraFinalizada(true);
-
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Hubo un error al procesar el pedido.");
-    } finally {
-      setCargandoPagos(false);
-    }
+    } catch (error) { console.error(error); }
+    finally { setCargandoPagos(false); }
   };
 
   const enviarComprobanteWA = () => {
-    const mensaje = `¡Hola! Acabo de hacer el pedido *#${ordenId}* en Cucharadita Misteriosa por un total de *$${totalFinal}*. Te adjunto el comprobante de transferencia a tu cuenta.`;
+    const mensaje = `¡Hola! Acabo de hacer el pedido *#${ordenId}* en Cucharadita Misteriosa por un total de *$${totalFinal}*. Te adjunto el comprobante.`;
     window.open(`https://wa.me/5493436575042?text=${encodeURIComponent(mensaje)}`, '_blank');
   };
 
-  // NUEVO: Extraemos las categorías únicas de los productos para armar los botones
   const categoriasExisten = ["Todas", ...Array.from(new Set(productos.map(p => p.categoria).filter(Boolean)))];
-  
-  // NUEVO: Filtramos los productos según la categoría tocada
-  const productosFiltrados = categoriaSeleccionada === "Todas" 
-    ? productos 
-    : productos.filter(p => p.categoria === categoriaSeleccionada);
+  const productosFiltrados = categoriaSeleccionada === "Todas" ? productos : productos.filter(p => p.categoria === categoriaSeleccionada);
 
-  // NUEVO: Función para deslizar suavemente hacia el carrito
-  const irAlCarrito = () => {
-    document.getElementById("carrito-seccion")?.scrollIntoView({ behavior: "smooth" });
+  const irAlCarrito = () => { document.getElementById("carrito-seccion")?.scrollIntoView({ behavior: "smooth" }); };
+
+  // NUEVO: Abrir modal de detalle
+  const verDetalle = (producto) => {
+    setProductoEnDetalle(producto);
+    onOpen();
   };
 
   return (
     <main className="flex min-h-screen flex-col items-center p-3 sm:p-6 md:p-12 relative">
       
-      {/* BOTÓN FLOTANTE CARRITO (Visible solo en celular/tablet cuando hay productos) */}
+      {/* BOTÓN FLOTANTE */}
       {carrito.length > 0 && !compraFinalizada && (
         <div className="fixed bottom-6 right-6 z-50 lg:hidden animate-appearance-in">
-          <Button 
-            radius="full" 
-            size="lg" 
-            className="bg-[#6D6875] text-white shadow-2xl border-2 border-white px-6 font-bold text-md"
-            onClick={irAlCarrito}
-          >
-            🛒 Ver Carrito ({carrito.reduce((t, i) => t + i.cantidad, 0)})
+          <Button radius="full" size="lg" className="bg-[#6D6875] text-white shadow-2xl border-2 border-white px-6 font-bold" onClick={irAlCarrito}>
+            🛒 Carrito ({carrito.reduce((t, i) => t + i.cantidad, 0)})
           </Button>
         </div>
       )}
 
-      <div className="w-full max-w-7xl mb-12 text-center mt-4 px-4">
+      {/* CABECERA */}
+      <div className="w-full max-w-7xl mb-12 text-center mt-4">
         <h1 className={`${playfair.className} text-5xl sm:text-7xl font-bold mb-4 text-[#B5838D] italic`}>Cucharadita Misteriosa</h1>
         <p className="text-xl sm:text-2xl font-bold text-[#4A4A4A] mb-2 uppercase tracking-wide">Descubre tu esencia</p>
-        <p className="text-sm sm:text-lg font-light text-[#6D6875] max-w-2xl mx-auto">Maquillaje, cuidado personal y artículos de belleza seleccionados para resaltar tu luz.</p>
+        <p className="text-sm sm:text-lg font-light text-[#6D6875] max-w-2xl mx-auto italic">Maquillaje y artículos de belleza seleccionados para resaltar tu luz.</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl">
-        
-        {/* SECCIÓN CATÁLOGO */}
         <div className="flex-1">
-          
-          {/* NUEVO: BOTONERA DE FILTROS POR CATEGORÍA */}
+          {/* FILTROS */}
           <div className="flex flex-wrap gap-2 mb-6 border-b border-[#FCD5CE] pb-4">
             {categoriasExisten.map(cat => (
-              <Button
-                key={cat}
-                size="sm"
-                radius="full"
-                variant={categoriaSeleccionada === cat ? "solid" : "flat"}
-                className={`font-bold text-xs tracking-wider transition-all ${
-                  categoriaSeleccionada === cat 
-                    ? "bg-[#B5838D] text-white shadow-md" 
-                    : "bg-[#FCF9F6] text-[#6D6875] hover:bg-[#E5989B] hover:text-white"
-                }`}
+              <Button key={cat} size="sm" radius="full" variant={categoriaSeleccionada === cat ? "solid" : "flat"}
+                className={`font-bold text-xs ${categoriaSeleccionada === cat ? "bg-[#B5838D] text-white" : "bg-white text-[#6D6875]"}`}
                 onClick={() => setCategoriaSeleccionada(cat)}
-              >
-                {cat}
-              </Button>
+              > {cat} </Button>
             ))}
           </div>
 
+          {/* GRILLA DE PRODUCTOS */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
-            {productosFiltrados.length === 0 ? (
-              <p className="col-span-full text-center py-10 text-gray-400 italic">No hay productos en esta categoría.</p>
-            ) : (
-              productosFiltrados.map((prod) => {
-                const cantCarrito = carrito.find(i => i.id === prod.id)?.cantidad || 0;
-                const sinStock = prod.stock === 0 || cantCarrito >= prod.stock;
-                return (
-                  <Card key={prod.id} shadow="sm" className="bg-white border-none">
-                    <CardBody className="p-0 relative">
-                      {prod.categoria && (
-                        <span className="absolute top-2 left-2 z-10 px-2 py-1 text-[8px] sm:text-[10px] font-bold text-white bg-[#B5838D]/90 backdrop-blur-sm rounded-full uppercase shadow-sm">
-                          {prod.categoria}
-                        </span>
-                      )}
-                      <Image shadow="none" radius="none" width="100%" className="w-full object-cover h-[160px] sm:h-[250px]" src={prod.imagenUrl} />
-                    </CardBody>
-                    <CardFooter className="flex-col items-start p-3 sm:p-5">
-                      <b className="text-xs sm:text-md uppercase truncate w-full">{prod.nombre}</b>
-                      <p className="text-[#B5838D] font-semibold">${prod.precio}</p>
-                      <Button size="sm" className={`w-full mt-2 text-white font-bold ${sinStock ? 'bg-red-600 !opacity-100' : 'bg-[#E5989B]'}`} onClick={() => agregarAlCarrito(prod)} isDisabled={sinStock}>
-                        {sinStock ? "AGOTADO!" : "Añadir"}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                );
-              })
-            )}
+            {productosFiltrados.map((prod) => {
+              const cantCarrito = carrito.find(i => i.id === prod.id)?.cantidad || 0;
+              const sinStock = prod.stock === 0 || cantCarrito >= prod.stock;
+              return (
+                <Card key={prod.id} shadow="sm" className="bg-white border-none cursor-pointer" isPressable onClick={() => verDetalle(prod)}>
+                  <CardBody className="p-0 relative">
+                    <Image shadow="none" radius="none" width="100%" className="w-full object-cover h-[160px] sm:h-[250px]" src={prod.imagenUrl} />
+                  </CardBody>
+                  <CardFooter className="flex-col items-start p-3 sm:p-5">
+                    <b className="text-xs sm:text-md uppercase truncate w-full">{prod.nombre}</b>
+                    <p className="text-[#B5838D] font-semibold">${prod.precio}</p>
+                    <Button size="sm" className={`w-full mt-2 text-white font-bold ${sinStock ? 'bg-red-600' : 'bg-[#E5989B]'}`} 
+                      onClick={(e) => { e.stopPropagation(); agregarAlCarrito(prod); }} isDisabled={sinStock}>
+                      {sinStock ? "AGOTADO!" : "Añadir"}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
           </div>
         </div>
 
-        {/* CARRITO Y PANTALLA DE PAGO (Agregamos el id="carrito-seccion") */}
-        <div id="carrito-seccion" className="w-full lg:w-96 h-fit sticky top-6 bg-white p-6 rounded-2xl shadow-sm border border-[#FCD5CE] scroll-mt-6">
-          
+        {/* SECCIÓN CARRITO */}
+        <div id="carrito-seccion" className="w-full lg:w-96 h-fit sticky top-6 bg-white p-6 rounded-2xl shadow-sm border border-[#FCD5CE]">
           {compraFinalizada ? (
-            <div className="flex flex-col items-center text-center gap-4 animate-appearance-in">
-              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mb-2">✓</div>
+            <div className="flex flex-col items-center text-center gap-4">
               <h2 className={`${playfair.className} text-2xl text-[#4A4A4A] font-bold`}>¡Pedido Registrado!</h2>
-              <p className="text-sm text-[#6D6875]">Tu número de orden es: <b className="text-[#B5838D]">#{ordenId}</b></p>
-              
-              <div className="w-full bg-[#FCF9F6] p-4 rounded-xl border border-[#FCD5CE] mt-2">
-                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Datos para pagar</p>
-                <p className="text-lg text-[#4A4A4A]">Total a transferir:</p>
-                <p className="text-3xl font-bold text-[#B5838D] my-1">${totalFinal}</p>
-                <div className="mt-4 text-left border-t border-gray-200 pt-3">
-                  <p className="text-sm text-gray-600"><b>Alias:</b> belengutierrez.25 </p>
-                  <p className="text-sm text-gray-600"><b>A nombre de:</b> María Belen Gutierrez </p>
-                </div>
+              <p className="text-sm">Orden: <b className="text-[#B5838D]">#{ordenId}</b></p>
+              <div className="w-full bg-[#FCF9F6] p-4 rounded-xl border border-[#FCD5CE]">
+                <p className="text-3xl font-bold text-[#B5838D] mb-4">${totalFinal}</p>
+                <p className="text-sm text-gray-600"><b>Alias:</b> cucharadita.mp</p>
+                <p className="text-sm text-gray-600"><b>Titular:</b> [Tu Nombre]</p>
               </div>
-
-              <p className="text-xs text-gray-400 italic px-2 mt-2">
-                Realiza la transferencia desde tu cuenta y envíanos el comprobante por WhatsApp para confirmar tu compra.
-              </p>
-
-              <Button 
-                className="w-full mt-2 bg-[#25D366] text-white font-bold h-12 shadow-lg"
-                onClick={enviarComprobanteWA}
-              >
-                Enviar Comprobante
-              </Button>
+              <Button className="w-full bg-[#25D366] text-white font-bold" onClick={enviarComprobanteWA}>Enviar Comprobante</Button>
             </div>
           ) : (
             <>
               <h2 className={`${playfair.className} text-2xl mb-6 text-[#B5838D]`}>Tu Compra</h2>
-              {carrito.length === 0 ? (
-                <p className="text-gray-400 text-center py-8 text-sm italic">El carrito está vacío.</p>
-              ) : (
+              {carrito.length === 0 ? <p className="text-gray-400 text-center py-8 italic">El carrito está vacío.</p> : (
                 <div className="flex flex-col gap-4">
                   {carrito.map((item) => (
                     <div key={item.id} className="flex justify-between items-center border-b pb-2">
                       <span className="text-sm font-medium w-2/3 truncate">{item.nombre} (x{item.cantidad})</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-[#4A4A4A]">${item.precio * item.cantidad}</span>
-                        <button onClick={() => eliminarDelCarrito(item.id)} className="text-red-300 font-bold text-lg">×</button>
+                        <span className="text-sm font-bold">${item.precio * item.cantidad}</span>
+                        <button onClick={() => eliminarDelCarrito(item.id)} className="text-red-300">×</button>
                       </div>
                     </div>
                   ))}
-
-                  <div className="flex flex-col gap-3 mt-2 p-3 bg-[#FCF9F6] rounded-xl border border-[#FCD5CE]">
-                    <p className="text-[10px] font-bold text-[#6D6875] uppercase tracking-widest">Tus Datos</p>
+                  <div className="flex flex-col gap-3 p-3 bg-[#FCF9F6] rounded-xl border border-[#FCD5CE]">
                     <Input size="sm" variant="underlined" label="Nombre" value={nombre} onValueChange={setNombre} />
-                    <Input size="sm" variant="underlined" label="Apellido" value={apellido} onValueChange={setApellido} />
-                    <Input size="sm" variant="underlined" label="WhatsApp" placeholder="Ej: 3436575042" value={whatsapp} onValueChange={setWhatsapp} />
+                    <Input size="sm" variant="underlined" label="WhatsApp" value={whatsapp} onValueChange={setWhatsapp} />
                   </div>
-
                   <div className="p-3">
-                    <RadioGroup value={metodoEntrega} onValueChange={setMetodoEntrega} color="secondary" size="sm">
+                    <RadioGroup value={metodoEntrega} onValueChange={setMetodoEntrega} size="sm">
                       <Radio value="retiro">Retiro en Victoria</Radio>
                       <Radio value="envio">Envío a domicilio</Radio>
                     </RadioGroup>
-                    {metodoEntrega === "envio" && (
-                      <Input size="sm" label="Código Postal" className="mt-3 max-w-[120px]" value={codigoPostal} onValueChange={setCodigoPostal} />
-                    )}
                   </div>
-                  
-                  <div className="border-t pt-4 mt-2">
-                    <div className="flex justify-between font-bold text-2xl text-[#4A4A4A]">
-                      <span>TOTAL:</span>
-                      <span>${totalFinal}</span>
-                    </div>
+                  <div className="flex justify-between font-bold text-2xl text-[#4A4A4A] border-t pt-4">
+                    <span>TOTAL:</span><span>${totalFinal}</span>
                   </div>
-                  
-                  <Button 
-                    className="w-full mt-4 bg-[#6D6875] text-white font-bold h-14 shadow-xl text-lg"
-                    isLoading={cargandoPagos}
-                    onClick={finalizarCompra}
-                  >
-                    CONTINUAR PAGO
-                  </Button>
+                  <Button className="w-full mt-4 bg-[#6D6875] text-white font-bold h-14" isLoading={cargandoPagos} onClick={finalizarCompra}>CONFIRMAR PEDIDO</Button>
                 </div>
               )}
             </>
           )}
         </div>
       </div>
+
+      {/* MODAL DE DETALLE DE PRODUCTO */}
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" scrollBehavior="inside" backdrop="blur">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className={`${playfair.className} text-2xl text-[#B5838D]`}>{productoEnDetalle?.nombre}</ModalHeader>
+              <ModalBody>
+                <div className="flex flex-col md:flex-row gap-6">
+                  <div className="w-full md:w-1/2">
+                    <Image src={productoEnDetalle?.imagenUrl} className="w-full object-cover rounded-xl shadow-lg" />
+                  </div>
+                  <div className="w-full md:w-1/2 flex flex-col gap-4">
+                    <div>
+                      <span className="text-[10px] font-bold text-white bg-[#B5838D] px-2 py-1 rounded-full uppercase tracking-widest">{productoEnDetalle?.categoria}</span>
+                      <h3 className="text-3xl font-bold text-[#4A4A4A] mt-2">${productoEnDetalle?.precio}</h3>
+                    </div>
+                    
+                    <Divider />
+                    
+                    <div>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Descripción</p>
+                      <p className="text-[#6D6875] leading-relaxed whitespace-pre-wrap">
+                        {productoEnDetalle?.descripcion || "Este producto no tiene una descripción detallada todavía."}
+                      </p>
+                    </div>
+
+                    <div className="mt-auto pt-4">
+                       <p className="text-xs text-gray-400 mb-2">Stock disponible: {productoEnDetalle?.stock} unidades</p>
+                       <Button 
+                        className="w-full bg-[#E5989B] text-white font-bold py-6 text-lg"
+                        isDisabled={productoEnDetalle?.stock === 0}
+                        onClick={() => { agregarAlCarrito(productoEnDetalle); onClose(); }}
+                       >
+                         {productoEnDetalle?.stock === 0 ? "Agotado" : "Añadir al carrito"}
+                       </Button>
+                    </div>
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={onClose} className="font-bold text-gray-400">Cerrar</Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
     </main>
   );
 }
