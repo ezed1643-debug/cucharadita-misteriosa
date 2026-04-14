@@ -29,7 +29,6 @@ export default function AdminPanel() {
 
   const COLORES_TORTA = ['#B5838D', '#E5989B', '#6D6875', '#FFB4A2', '#FCD5CE'];
 
-  // ¡RECUPERAMOS LAS CATEGORÍAS!
   const categoriasExistentes = Array.from(new Set(productos.map(p => p.categoria).filter(c => c)));
 
   const cargarDatos = async () => {
@@ -53,7 +52,6 @@ export default function AdminPanel() {
     let acumulado = 0;
 
     lista.forEach(v => {
-      // AQUÍ ESTÁ LA MAGIA: Si el estado es "Pendiente de Pago", NO se suma a las estadísticas.
       if (!v.fecha || v.estado === "Pendiente de Pago") return; 
 
       const fechaClave = new Date(v.fecha.seconds * 1000).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
@@ -73,7 +71,6 @@ export default function AdminPanel() {
 
   useEffect(() => { cargarDatos(); }, []);
 
-  // LÓGICA DE 3 ESTADOS: Pendiente -> Pagado -> Entregado
   const cambiarEstadoPedido = async (id, estadoActual) => {
     let nuevoEstado = "Pagado";
     if (estadoActual === "Pendiente de Pago") nuevoEstado = "Pagado";
@@ -112,10 +109,9 @@ export default function AdminPanel() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-10 bg-[#FCF9F6] min-h-screen">
+    <div className="max-w-7xl mx-auto p-4 md:p-10 bg-[#FCF9F6] min-h-screen">
       <h1 className="text-4xl font-serif text-[#B5838D] mb-8 text-center italic font-bold">Panel Administrativo</h1>
 
-      {/* PESTAÑAS ORDENADAS: 1. Ventas, 2. Inventario, 3. Estadísticas */}
       <Tabs aria-label="Menu" color="secondary" variant="underlined" fullWidth size="lg">
         
         {/* 1. VENTAS */}
@@ -125,7 +121,6 @@ export default function AdminPanel() {
               <p className="text-center text-gray-400 py-10">No hay ventas registradas aún.</p>
             ) : (
               ventas.map((v) => {
-                // Colores y textos según el estado
                 let colorChip = "warning"; let textoChip = "⏳ Esperando Pago"; let btnAccion = "Confirmar Pago";
                 if (v.estado === "Pagado") { colorChip = "success"; textoChip = "💰 Pagado"; btnAccion = "Marcar Entregado"; }
                 if (v.estado === "Entregado") { colorChip = "default"; textoChip = "✓ Entregado"; btnAccion = "Revertir"; }
@@ -165,50 +160,81 @@ export default function AdminPanel() {
           </div>
         </Tab>
 
-        {/* 2. INVENTARIO (CON CATEGORÍAS RESTAURADAS) */}
+        {/* 2. INVENTARIO CON GRILLA DE 3 COLUMNAS */}
         <Tab key="productos" title="💄 INVENTARIO">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
-            <Card className="p-6 bg-white shadow-sm h-fit">
-              <form onSubmit={guardarProducto} className="flex flex-col gap-4">
-                <Input label="Nombre" value={nombre} onValueChange={setNombre} isRequired />
-                <Input label="Precio" type="number" value={precio} onValueChange={setPrecio} isRequired />
-                <Input label="Stock" type="number" value={stock} onValueChange={setStock} isRequired />
-                
-                {/* INTERFAZ DE CATEGORÍAS RESTAURADA */}
-                <div className="flex flex-col gap-2">
-                  <Input label="Categoría" value={categoria} onValueChange={setCategoria} placeholder="Ej: Skin Care, Labiales..." />
-                  {categoriasExistentes.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      <span className="text-[10px] text-gray-400 font-bold mt-1">Sugerencias:</span>
-                      {categoriasExistentes.map(cat => (
-                        <button key={cat} type="button" onClick={() => setCategoria(cat)} className="text-xs bg-[#FCD5CE]/40 text-[#4A4A4A] px-3 py-1 rounded-full border border-[#FCD5CE] hover:bg-[#FCD5CE]">
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+          <div className="flex flex-col lg:flex-row gap-8 mt-6">
+            
+            {/* COLUMNA IZQUIERDA: Formulario */}
+            <div className="w-full lg:w-1/3">
+              <Card className="p-6 bg-white shadow-sm h-fit lg:sticky lg:top-6">
+                <h2 className="text-xl font-bold text-[#4A4A4A] mb-4">{editandoId ? "Editar Producto" : "Nuevo Producto"}</h2>
+                <form onSubmit={guardarProducto} className="flex flex-col gap-4">
+                  <Input label="Nombre" value={nombre} onValueChange={setNombre} isRequired />
+                  <Input label="Precio" type="number" value={precio} onValueChange={setPrecio} isRequired />
+                  <Input label="Stock" type="number" value={stock} onValueChange={setStock} isRequired />
+                  
+                  <div className="flex flex-col gap-2">
+                    <Input label="Categoría" value={categoria} onValueChange={setCategoria} placeholder="Ej: Skin Care, Labiales..." />
+                    {categoriasExistentes.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        <span className="text-[10px] text-gray-400 font-bold mt-1">Sugerencias:</span>
+                        {categoriasExistentes.map(cat => (
+                          <button key={cat} type="button" onClick={() => setCategoria(cat)} className="text-xs bg-[#FCD5CE]/40 text-[#4A4A4A] px-3 py-1 rounded-full border border-[#FCD5CE] hover:bg-[#FCD5CE]">
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-                <Textarea label="Descripción" value={descripcion} onValueChange={setDescripcion} />
-                <input type="file" className="text-xs" onChange={(e) => setImagen(e.target.files[0])} />
-                <Button type="submit" isLoading={cargando} className="bg-[#B5838D] text-white font-bold">{editandoId ? "Actualizar" : "Publicar"}</Button>
-                {editandoId && <Button variant="light" size="sm" onClick={limpiarForm}>Cancelar</Button>}
-              </form>
-            </Card>
-            <div className="flex flex-col gap-3 overflow-y-auto max-h-[600px] pr-2">
-              {productos.map(p => (
-                <Card key={p.id} className="p-3 shadow-sm flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img src={p.imagenUrl} className="w-12 h-12 object-cover rounded" />
-                    <div><p className="font-bold text-sm text-[#4A4A4A]">{p.nombre}</p><p className="text-xs text-[#B5838D]">Precio: ${p.precio} | Stock: {p.stock}</p></div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="flat" onClick={() => { setEditandoId(p.id); setNombre(p.nombre); setPrecio(p.precio.toString()); setStock(p.stock.toString()); setCategoria(p.categoria || ""); setDescripcion(p.descripcion || ""); setImagenUrlActual(p.imagenUrl); }}>Editar</Button>
-                    <Button size="sm" color="danger" variant="flat" onClick={() => {if(confirm("¿Borrar?")) deleteDoc(doc(db, "productos", p.id)).then(cargarDatos)}}>X</Button>
-                  </div>
-                </Card>
-              ))}
+                  <Textarea label="Descripción" value={descripcion} onValueChange={setDescripcion} />
+                  <input type="file" className="text-xs" onChange={(e) => setImagen(e.target.files[0])} />
+                  <Button type="submit" isLoading={cargando} className="bg-[#B5838D] text-white font-bold h-12">{editandoId ? "Actualizar" : "Publicar"}</Button>
+                  {editandoId && <Button variant="light" size="sm" onClick={limpiarForm}>Cancelar Edición</Button>}
+                </form>
+              </Card>
             </div>
+
+            {/* COLUMNA DERECHA: Grilla de Productos */}
+            <div className="w-full lg:w-2/3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-h-[800px] p-2">
+                {productos.map(p => (
+                  <Card key={p.id} className="p-3 shadow-sm border-none bg-white flex flex-col justify-between hover:shadow-md transition-shadow">
+                    
+                    <div className="flex flex-col items-center text-center gap-2">
+                      <img src={p.imagenUrl} className="w-full h-32 md:h-40 object-cover rounded-lg" />
+                      <div className="w-full mt-2">
+                        <p className="font-bold text-sm text-[#4A4A4A] line-clamp-1" title={p.nombre}>{p.nombre}</p>
+                        <p className="text-xs text-[#B5838D] font-bold mt-1">${p.precio} <span className="text-gray-400 font-normal">| Disp: {p.stock}</span></p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 mt-4 w-full">
+                      <Button 
+                        size="sm" 
+                        className="flex-1 font-bold bg-[#FCF9F6] text-[#6D6875]" 
+                        onClick={() => { 
+                          setEditandoId(p.id); setNombre(p.nombre); setPrecio(p.precio.toString()); setStock(p.stock.toString()); 
+                          setCategoria(p.categoria || ""); setDescripcion(p.descripcion || ""); setImagenUrlActual(p.imagenUrl); 
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                      >
+                        Editar
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        isIconOnly
+                        className="bg-red-50 text-red-400 hover:bg-red-400 hover:text-white" 
+                        onClick={() => {if(confirm("¿Borrar producto definitivamente?")) deleteDoc(doc(db, "productos", p.id)).then(cargarDatos)}}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
           </div>
         </Tab>
 
@@ -221,7 +247,6 @@ export default function AdminPanel() {
             </Card>
             <Card className="bg-[#6D6875] text-white p-6 shadow-sm">
               <p className="text-xs uppercase font-bold opacity-80">Ventas Concretadas</p>
-              {/* Filtramos para no contar los pendientes en el contador principal */}
               <h2 className="text-4xl font-bold">{ventas.filter(v => v.estado !== "Pendiente de Pago").length}</h2>
             </Card>
             <Card className="bg-[#E5989B] text-white p-6 shadow-sm">
