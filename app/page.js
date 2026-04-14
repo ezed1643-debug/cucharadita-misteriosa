@@ -19,8 +19,6 @@ export default function Home() {
   
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("Todas");
   const [productoEnDetalle, setProductoEnDetalle] = useState(null); 
-  
-  // Agregamos "placement=center" para asegurar que aparezca en el medio
   const {isOpen, onOpen, onOpenChange} = useDisclosure(); 
 
   const [nombre, setNombre] = useState("");
@@ -136,15 +134,22 @@ export default function Home() {
               const cantCarrito = carrito.find(i => i.id === prod.id)?.cantidad || 0;
               const sinStock = prod.stock === 0 || cantCarrito >= prod.stock;
               return (
-                <Card key={prod.id} shadow="sm" className="bg-white border-none cursor-pointer hover:shadow-md transition-shadow" isPressable onClick={() => verDetalle(prod)}>
-                  <CardBody className="p-0 relative">
-                    <Image shadow="none" radius="none" width="100%" className="w-full object-cover h-[160px] sm:h-[250px]" src={prod.imagenUrl} />
-                  </CardBody>
-                  <CardFooter className="flex-col items-start p-3 sm:p-5">
-                    <b className="text-xs sm:text-md uppercase truncate w-full leading-tight">{prod.nombre}</b>
-                    <p className="text-[#B5838D] font-semibold mt-1">${prod.precio}</p>
-                    <Button size="sm" className={`w-full mt-2 text-white font-bold ${sinStock ? 'bg-red-600' : 'bg-[#E5989B]'}`} 
-                      onClick={(e) => { e.stopPropagation(); agregarAlCarrito(prod); }} isDisabled={sinStock}>
+                <Card key={prod.id} shadow="sm" className="bg-white border-none hover:shadow-md transition-shadow">
+                  {/* ZONA 1: Clickeable para abrir el detalle */}
+                  <div className="cursor-pointer" onClick={() => verDetalle(prod)}>
+                    <CardBody className="p-0 relative">
+                      <Image shadow="none" radius="none" width="100%" className="w-full object-cover h-[160px] sm:h-[250px]" src={prod.imagenUrl} />
+                    </CardBody>
+                    <div className="flex flex-col items-start px-3 sm:px-5 pt-3 sm:pt-5">
+                      <b className="text-xs sm:text-md uppercase truncate w-full leading-tight">{prod.nombre}</b>
+                      <p className="text-[#B5838D] font-semibold mt-1">${prod.precio}</p>
+                    </div>
+                  </div>
+                  
+                  {/* ZONA 2: Botón libre e independiente */}
+                  <CardFooter className="flex-col items-start px-3 sm:px-5 pb-3 sm:pb-5 pt-0 mt-2">
+                    <Button size="sm" className={`w-full text-white font-bold ${sinStock ? 'bg-red-600' : 'bg-[#E5989B]'}`} 
+                      onClick={() => agregarAlCarrito(prod)} isDisabled={sinStock}>
                       {sinStock ? "AGOTADO!" : "Añadir"}
                     </Button>
                   </CardFooter>
@@ -172,7 +177,7 @@ export default function Home() {
               {carrito.length === 0 ? <p className="text-gray-400 text-center py-8 italic">El carrito está vacío.</p> : (
                 <div className="flex flex-col gap-4">
                   {carrito.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center border-b pb-2">
+                     <div key={item.id} className="flex justify-between items-center border-b pb-2">
                       <span className="text-sm font-medium w-2/3 truncate">{item.nombre} (x{item.cantidad})</span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold">${item.precio * item.cantidad}</span>
@@ -205,7 +210,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* MODAL OPTIMIZADO (Sin scroll externo) */}
       <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" placement="center" backdrop="blur">
         <ModalContent className="max-h-[90vh]">
           {(onClose) => (
@@ -213,12 +217,9 @@ export default function Home() {
               <ModalHeader className={`${playfair.className} text-xl md:text-2xl text-[#B5838D] pb-2`}>{productoEnDetalle?.nombre}</ModalHeader>
               <ModalBody className="pb-6 pt-0">
                 <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center">
-                  
-                  {/* IMAGEN FIJA: No crece más allá de este límite */}
                   <div className="w-full md:w-1/2">
                     <Image src={productoEnDetalle?.imagenUrl} className="w-full h-[180px] sm:h-[220px] md:h-[280px] object-cover rounded-xl shadow-sm" />
                   </div>
-                  
                   <div className="w-full md:w-1/2 flex flex-col gap-2 md:gap-3 h-full justify-between">
                     <div>
                       <span className="text-[10px] font-bold text-white bg-[#B5838D] px-2 py-1 rounded-full uppercase tracking-widest">{productoEnDetalle?.categoria}</span>
@@ -227,7 +228,6 @@ export default function Home() {
                     
                     <Divider className="my-1"/>
                     
-                    {/* DESCRIPCIÓN CON MINI-SCROLL: Ocupa poco espacio pero permite leer texto largo */}
                     <div className="max-h-[80px] md:max-h-[120px] overflow-y-auto pr-2">
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Descripción</p>
                       <p className="text-xs md:text-sm text-[#6D6875] leading-relaxed whitespace-pre-wrap">
